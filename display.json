@@ -1,0 +1,8 @@
+{
+  "name": "Drawing Sheet Editor",
+  "icon": "📐",
+  "group": "Design",
+  "description": "ANSI and ISO drawing sheet borders, zone grids, revision tables, and engineering title blocks",
+  "entrypoint": "index.html",
+  "blockTypes": ["drawingsheet", "sheet", "titleblock"]
+}
