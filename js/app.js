@@ -1,22 +1,26 @@
 // Part of the APK.audio project — http://APK.audio — made by Anthony Kuzub
 // MIT Licence. Free, for everyone, for ever. Full text in LICENSE at the root.
 
-import { BlockBridge } from './blockBridge.js';
+import { linkBlock, mountDiscovered } from './softappLink.js';
 import { SheetModel, SHEET_SIZES } from './sheetModel.js';
 import { renderDrawingSheetSvg } from './sheetSvg.js';
 
+const S = window.APKSoftapp;
+const esc = S.esc;
 let model = new SheetModel();
 
-const bridge = new BlockBridge({
-  name: 'Drawing Sheet Editor',
-  type: 'drawingsheet',
-  defaultBlock: model.toJSON(),
-  onBlockLoaded: (block) => {
-    if (block) {
-      model = new SheetModel(block);
-      renderAll();
-    }
+const bridge = linkBlock(S, {
+  editor: 'Drawing Sheet Editor',
+  blockType: 'drawingsheet',
+  Model: SheetModel,
+  getModel: () => model,
+  setModel: (m, meta) => {
+    model = m;
+    const tag = document.getElementById('block-tag');
+    if (tag && (meta.blockName || meta.filename)) tag.textContent = meta.blockName || meta.filename;
+    renderAll();
   },
+  filename: (m) => m.drawingCode.toLowerCase(),
 });
 
 function renderInspector() {
@@ -27,43 +31,43 @@ function renderInspector() {
     <div style="display: flex; flex-direction: column; gap: 10px;">
       <div>
         <label style="display: block; font-size: 10px; color: var(--osc-text-muted); margin-bottom: 3px;">DRAWING CODE</label>
-        <input type="text" class="input" id="inp-code" value="${model.drawingCode}">
+        <input type="text" class="input" id="inp-code" value="${esc(model.drawingCode)}">
       </div>
 
       <div>
         <label style="display: block; font-size: 10px; color: var(--osc-text-muted); margin-bottom: 3px;">SHEET TITLE</label>
-        <input type="text" class="input" id="inp-title" value="${model.title}">
+        <input type="text" class="input" id="inp-title" value="${esc(model.title)}">
       </div>
 
       <div>
         <label style="display: block; font-size: 10px; color: var(--osc-text-muted); margin-bottom: 3px;">PROJECT NAME</label>
-        <input type="text" class="input" id="inp-project" value="${model.projectName}">
+        <input type="text" class="input" id="inp-project" value="${esc(model.projectName)}">
       </div>
 
       <div>
         <label style="display: block; font-size: 10px; color: var(--osc-text-muted); margin-bottom: 3px;">CLIENT / FACILITY</label>
-        <input type="text" class="input" id="inp-client" value="${model.clientName}">
+        <input type="text" class="input" id="inp-client" value="${esc(model.clientName)}">
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
         <div>
           <label style="display: block; font-size: 10px; color: var(--osc-text-muted); margin-bottom: 3px;">SHEET NUMBER</label>
-          <input type="number" class="input" id="inp-sheet-num" value="${model.sheetNumber}">
+          <input type="number" class="input" id="inp-sheet-num" value="${esc(model.sheetNumber)}">
         </div>
         <div>
           <label style="display: block; font-size: 10px; color: var(--osc-text-muted); margin-bottom: 3px;">TOTAL SHEETS</label>
-          <input type="number" class="input" id="inp-sheet-total" value="${model.sheetTotal}">
+          <input type="number" class="input" id="inp-sheet-total" value="${esc(model.sheetTotal)}">
         </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
         <div>
           <label style="display: block; font-size: 10px; color: var(--osc-text-muted); margin-bottom: 3px;">SCALE</label>
-          <input type="text" class="input" id="inp-scale" value="${model.scaleText}">
+          <input type="text" class="input" id="inp-scale" value="${esc(model.scaleText)}">
         </div>
         <div>
           <label style="display: block; font-size: 10px; color: var(--osc-text-muted); margin-bottom: 3px;">ENGINEER</label>
-          <input type="text" class="input" id="inp-eng" value="${model.engineer}">
+          <input type="text" class="input" id="inp-eng" value="${esc(model.engineer)}">
         </div>
       </div>
 
@@ -76,15 +80,18 @@ function renderInspector() {
           <input type="text" class="input" id="inp-new-desc" placeholder="Revision description..." style="flex: 1;">
           <button class="btn btn-secondary btn-sm" id="btn-add-rev">Add</button>
         </div>
+        <div id="revisions-table" style="margin-top: 8px;"></div>
       </div>
     </div>
   `;
+
+  renderRevisionTable();
 
   const bind = (id, prop, isNum = false) => {
     document.getElementById(id)?.addEventListener('input', (e) => {
       const val = isNum ? parseInt(e.target.value, 10) || 1 : e.target.value;
       model[prop] = val;
-      bridge.notifyChanged();
+      bridge.changed();
       renderSvg();
     });
   };
@@ -103,9 +110,39 @@ function renderInspector() {
     const desc = document.getElementById('inp-new-desc')?.value;
     if (rev && desc) {
       model.addRevision(rev, desc);
-      bridge.notifyChanged();
+      bridge.changed();
       renderAll();
     }
+  });
+}
+
+/* The revision list is an APKTable (vendor/apk-table): APKTable.get('drawingsheet-revisions'). */
+function renderRevisionTable() {
+  const tableHost = document.getElementById('revisions-table');
+  if (!tableHost || !window.APKTable) return;
+  window.APKTable.create(tableHost, {
+    id: 'drawingsheet-revisions',
+    columns: [
+      { key: 'rev', label: 'Rev', mono: true },
+      { key: 'date', label: 'Date', mono: true },
+      { key: 'desc', label: 'Description' },
+      { key: 'by', label: 'By' },
+    ],
+    rows: model.revisions,
+    empty: 'No revisions yet.',
+    onEdit: (i, key, value) => {
+      if (!model.revisions[i]) return;
+      model.revisions[i][key] = value;
+      model.currentRev = model.revisions.at(-1)?.rev || model.currentRev;
+      bridge.changed();
+      renderSvg();
+    },
+    onDelete: (i) => {
+      model.revisions.splice(i, 1);
+      model.currentRev = model.revisions.at(-1)?.rev || '';
+      bridge.changed();
+      renderAll();
+    },
   });
 }
 
@@ -128,12 +165,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const selSize = document.getElementById('sel-sheet-size');
   if (selSize) {
     selSize.innerHTML = Object.entries(SHEET_SIZES).map(([key, s]) => `
-      <option value="${key}" ${model.sheetSize === key ? 'selected' : ''}>${s.label}</option>
+      <option value="${esc(key)}" ${model.sheetSize === key ? 'selected' : ''}>${esc(s.label)}</option>
     `).join('');
 
     selSize.addEventListener('change', (e) => {
       model.setSheetSize(e.target.value);
-      bridge.notifyChanged();
+      bridge.changed();
       renderAll();
     });
   }
@@ -149,9 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.onload = (event) => {
         try {
           const parsed = JSON.parse(event.target.result);
-          model = new SheetModel(parsed);
-          bridge.loadBlock(model.toJSON(), { filename: file.name });
-          renderAll();
+          bridge.openLocal(parsed, { filename: file.name });
         } catch (err) {
           alert('Failed to parse drawing sheet json: ' + err.message);
         }
@@ -161,17 +196,16 @@ document.addEventListener('DOMContentLoaded', () => {
     input.click();
   });
 
-  document.getElementById('btn-discovered')?.addEventListener('click', async () => {
-    const project = await bridge.fetchDiscoveredProject();
-    if (project) {
-      alert(`Discovered Project: ${project.project_name || 'APK Audio'}\nSheet Code: ${model.drawingCode}`);
-    } else {
-      alert('Connecting to live discovery bus...');
-    }
+  mountDiscovered(S, window.APKTable, {
+    button: document.getElementById('btn-discovered'),
+    panel: document.getElementById('discovered-panel'),
+    status: document.getElementById('discovered-status'),
+    tableHost: document.getElementById('discovered-table'),
+    tableId: 'drawingsheet-discovered',
   });
 
   document.getElementById('btn-save-block')?.addEventListener('click', () => {
-    bridge.saveBlock(model.toJSON(), { filename: model.drawingCode.toLowerCase() });
+    bridge.save();
   });
 
   document.getElementById('btn-close')?.addEventListener('click', () => {

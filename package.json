@@ -4,6 +4,6 @@
   "type": "module",
   "description": "ANSI and ISO drawing sheet borders, zone grids, revision tables, and engineering title blocks",
   "scripts": {
-    "test": "node --test test/sheet.test.mjs"
+    "test": "node --test test/*.test.mjs"
   }
 }

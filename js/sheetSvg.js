@@ -3,6 +3,11 @@
 
 import { SHEET_SIZES } from './sheetModel.js';
 
+/* Every text from the model is escaped before it goes into the SVG markup. */
+export function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
 export function renderDrawingSheetSvg(model, options = {}) {
   const size = SHEET_SIZES[model.sheetSize] || SHEET_SIZES.ANSI_B;
 
@@ -58,10 +63,10 @@ export function renderDrawingSheetSvg(model, options = {}) {
     const ry = revTableY + 22 + idx * revRowH;
     return `
       <rect x="${revTableX}" y="${ry}" width="${revTableW}" height="${revRowH}" fill="${idx % 2 === 0 ? '#18181b' : '#0f0f11'}" stroke="#2c2c2c" stroke-width="0.5"/>
-      <text x="${revTableX + 10}" y="${ry + 13}" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="700" fill="#F4902C">${r.rev}</text>
-      <text x="${revTableX + 35}" y="${ry + 13}" font-family="'JetBrains Mono', monospace" font-size="9" fill="#888888">${r.date}</text>
-      <text x="${revTableX + 115}" y="${ry + 13}" font-family="-apple-system, sans-serif" font-size="9" fill="#f4f4f5">${r.desc}</text>
-      <text x="${revTableX + revTableW - 10}" y="${ry + 13}" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="9" fill="#888888">${r.by}</text>
+      <text x="${revTableX + 10}" y="${ry + 13}" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="700" fill="#F4902C">${esc(r.rev)}</text>
+      <text x="${revTableX + 35}" y="${ry + 13}" font-family="'JetBrains Mono', monospace" font-size="9" fill="#888888">${esc(r.date)}</text>
+      <text x="${revTableX + 115}" y="${ry + 13}" font-family="-apple-system, sans-serif" font-size="9" fill="#f4f4f5">${esc(r.desc)}</text>
+      <text x="${revTableX + revTableW - 10}" y="${ry + 13}" text-anchor="end" font-family="'JetBrains Mono', monospace" font-size="9" fill="#888888">${esc(r.by)}</text>
     `;
   }).join('');
 
@@ -100,34 +105,34 @@ export function renderDrawingSheetSvg(model, options = {}) {
         <rect x="${tbX}" y="${tbY}" width="${tbWidth}" height="32" fill="#0f0f11" stroke="#2c2c2c" stroke-width="1"/>
         <circle cx="${tbX + 18}" cy="${tbY + 16}" r="7" fill="#F4902C"/>
         <text x="${tbX + 32}" y="${tbY + 20}" font-family="-apple-system, sans-serif" font-size="13" font-weight="800" fill="#f4f4f5" letter-spacing="0.05em">APK.audio</text>
-        <text x="${tbX + tbWidth - 12}" y="${tbY + 20}" text-anchor="end" font-family="-apple-system, sans-serif" font-size="10" font-weight="600" fill="#888888">${model.clientName}</text>
+        <text x="${tbX + tbWidth - 12}" y="${tbY + 20}" text-anchor="end" font-family="-apple-system, sans-serif" font-size="10" font-weight="600" fill="#888888">${esc(model.clientName)}</text>
 
         <!-- Project Title -->
         <text x="${tbX + 12}" y="${tbY + 48}" font-family="'JetBrains Mono', monospace" font-size="9" fill="#888888">PROJECT:</text>
-        <text x="${tbX + 12}" y="${tbY + 62}" font-family="-apple-system, sans-serif" font-size="11" font-weight="700" fill="#f4f4f5">${model.projectName}</text>
+        <text x="${tbX + 12}" y="${tbY + 62}" font-family="-apple-system, sans-serif" font-size="11" font-weight="700" fill="#f4f4f5">${esc(model.projectName)}</text>
 
         <!-- Sheet Title -->
         <line x1="${tbX}" y1="${tbY + 70}" x2="${tbX + tbWidth}" y2="${tbY + 70}" stroke="#2c2c2c" stroke-width="1"/>
         <text x="${tbX + 12}" y="${tbY + 84}" font-family="'JetBrains Mono', monospace" font-size="9" fill="#888888">SHEET TITLE:</text>
-        <text x="${tbX + 12}" y="${tbY + 98}" font-family="-apple-system, sans-serif" font-size="11" font-weight="700" fill="#F4902C">${model.title}</text>
+        <text x="${tbX + 12}" y="${tbY + 98}" font-family="-apple-system, sans-serif" font-size="11" font-weight="700" fill="#F4902C">${esc(model.title)}</text>
 
         <!-- Bottom Grid: Drawing Code, Rev, Sheet Number, Scale -->
         <line x1="${tbX}" y1="${tbY + 106}" x2="${tbX + tbWidth}" y2="${tbY + 106}" stroke="#2c2c2c" stroke-width="1"/>
         
         <text x="${tbX + 12}" y="${tbY + 119}" font-family="'JetBrains Mono', monospace" font-size="8" fill="#888888">DWG NO.</text>
-        <text x="${tbX + 12}" y="${tbY + 133}" font-family="'JetBrains Mono', monospace" font-size="12" font-weight="700" fill="#4A9EFF">${model.drawingCode}</text>
+        <text x="${tbX + 12}" y="${tbY + 133}" font-family="'JetBrains Mono', monospace" font-size="12" font-weight="700" fill="#4A9EFF">${esc(model.drawingCode)}</text>
 
         <line x1="${tbX + 140}" y1="${tbY + 106}" x2="${tbX + 140}" y2="${tbY + tbHeight}" stroke="#2c2c2c" stroke-width="1"/>
         <text x="${tbX + 148}" y="${tbY + 119}" font-family="'JetBrains Mono', monospace" font-size="8" fill="#888888">SCALE</text>
-        <text x="${tbX + 148}" y="${tbY + 132}" font-family="'JetBrains Mono', monospace" font-size="10" fill="#f4f4f5">${model.scaleText}</text>
+        <text x="${tbX + 148}" y="${tbY + 132}" font-family="'JetBrains Mono', monospace" font-size="10" fill="#f4f4f5">${esc(model.scaleText)}</text>
 
         <line x1="${tbX + 220}" y1="${tbY + 106}" x2="${tbX + 220}" y2="${tbY + tbHeight}" stroke="#2c2c2c" stroke-width="1"/>
         <text x="${tbX + 228}" y="${tbY + 119}" font-family="'JetBrains Mono', monospace" font-size="8" fill="#888888">REV</text>
-        <text x="${tbX + 228}" y="${tbY + 133}" font-family="'JetBrains Mono', monospace" font-size="12" font-weight="700" fill="#F4902C">${model.currentRev}</text>
+        <text x="${tbX + 228}" y="${tbY + 133}" font-family="'JetBrains Mono', monospace" font-size="12" font-weight="700" fill="#F4902C">${esc(model.currentRev)}</text>
 
         <line x1="${tbX + 280}" y1="${tbY + 106}" x2="${tbX + 280}" y2="${tbY + tbHeight}" stroke="#2c2c2c" stroke-width="1"/>
         <text x="${tbX + 288}" y="${tbY + 119}" font-family="'JetBrains Mono', monospace" font-size="8" fill="#888888">SHEET</text>
-        <text x="${tbX + 288}" y="${tbY + 133}" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="700" fill="#f4f4f5">${model.sheetNumber} OF ${model.sheetTotal}</text>
+        <text x="${tbX + 288}" y="${tbY + 133}" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="700" fill="#f4f4f5">${esc(model.sheetNumber)} OF ${esc(model.sheetTotal)}</text>
       </g>
     </svg>
   `;
