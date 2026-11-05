@@ -1,13 +1,32 @@
 // Part of the APK.audio project — http://APK.audio — made by Anthony Kuzub
 // MIT Licence. Free, for everyone, for ever. Full text in LICENSE at the root.
 
-import { linkBlock, mountDiscovered } from './softappLink.js';
+import { linkBlock, mountDiscovered, openJsonFile } from './softappLink.js';
 import { SheetModel, SHEET_SIZES } from './sheetModel.js';
 import { renderDrawingSheetSvg } from './sheetSvg.js';
 
 const S = window.APKSoftapp;
 const esc = S.esc;
 let model = new SheetModel();
+
+S.describe({
+  name: 'Drawing Sheet Editor',
+  does: 'The sheet border and title block of a drawing: size, code, title, project, client, sheet n of N, scale, engineer and the revision list.',
+  inputs: [
+    { name: 'Drawing sheet block', from: 'the CAD (when opened from a drawing), or a .json file via Open', kind: 'file' },
+    { name: 'Discovered', from: 'the bus: what scanners and agents found (kinds in config/discovered.json), shown read-only', kind: 'bus' },
+  ],
+  outputs: [
+    { name: 'Drawing sheet block', to: 'the CAD on Save and on every edit; standalone Save downloads <drawing code>.json', kind: 'file' },
+  ],
+  controls: [
+    { name: 'Sheet size', how: 'pick the paper size; the border redraws' },
+    { name: 'Inspector fields', how: 'code, title, project, client, sheet number / total, scale, engineer' },
+    { name: 'Add revision', how: 'type Rev and a description, Add; edit or delete rows in the revision table' },
+    { name: 'Discovered / Open Block / Save & Return / Close', how: 'header buttons' },
+  ],
+  problems: ['bad_json', 'bad_input', 'file_unreadable', 'not_in_cad', 'bus_missing'],
+});
 
 const bridge = linkBlock(S, {
   editor: 'Drawing Sheet Editor',
@@ -175,26 +194,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  document.getElementById('btn-open-block')?.addEventListener('click', () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const parsed = JSON.parse(event.target.result);
-          bridge.openLocal(parsed, { filename: file.name });
-        } catch (err) {
-          alert('Failed to parse drawing sheet json: ' + err.message);
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-  });
+  document.getElementById('btn-open-block')?.addEventListener('click', () => openJsonFile(S, {
+    what: 'a drawing sheet block',
+    onJson: (parsed, file) => bridge.openLocal(parsed, { filename: file.name }),
+  }));
 
   mountDiscovered(S, window.APKTable, {
     button: document.getElementById('btn-discovered'),
