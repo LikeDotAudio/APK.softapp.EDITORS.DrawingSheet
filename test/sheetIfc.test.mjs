@@ -1,7 +1,7 @@
 // Part of the APK.audio project — http://APK.audio — made by Anthony Kuzub
 // MIT Licence. Free, for everyone, for ever. Full text in LICENSE at the root.
 // cad-9: the sheet as IfcDocumentInformation (+ one per earlier revision, chained) and back.
-// IFC_OUT=<dir> node --test test/  also writes the files there, for IfcOpenShell validate.
+// IFC_OUT=<dir> npm test  also writes the files there, for IfcOpenShell validate.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
