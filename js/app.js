@@ -4,6 +4,7 @@
 import { linkBlock, mountDiscovered, openJsonFile } from './softappLink.js';
 import { SheetModel, SHEET_SIZES } from './sheetModel.js';
 import { renderDrawingSheetSvg } from './sheetSvg.js';
+import { fromIfc, toIfc } from './ifc/sheetIfc.js';
 
 const S = window.APKSoftapp;
 const esc = S.esc;
@@ -14,18 +15,20 @@ S.describe({
   does: 'The sheet border and title block of a drawing: size, code, title, project, client, sheet n of N, scale, engineer and the revision list.',
   inputs: [
     { name: 'Drawing sheet block', from: 'the CAD (when opened from a drawing), or a .json file via Open', kind: 'file' },
+    { name: '<drawing code>.ifc', from: 'Open Model: an IFC4X3 file (the IfcDocumentInformation and its revisions), or the sheet .json', kind: 'file' },
     { name: 'Discovered', from: 'the bus: what scanners and agents found (kinds in config/discovered.json), shown read-only', kind: 'bus' },
   ],
   outputs: [
     { name: 'Drawing sheet block', to: 'the CAD on Save and on every edit; standalone Save downloads <drawing code>.json', kind: 'file' },
+    { name: '<drawing code>.ifc + .json', to: 'Save Model: the sheet as IFC4X3_ADD2 — IfcDocumentInformation per revision, chained, on the IfcProject — and its .json twin', kind: 'file' },
   ],
   controls: [
     { name: 'Sheet size', how: 'pick the paper size; the border redraws' },
     { name: 'Inspector fields', how: 'code, title, project, client, sheet number / total, scale, engineer' },
     { name: 'Add revision', how: 'type Rev and a description, Add; edit or delete rows in the revision table' },
-    { name: 'Discovered / Open Block / Save & Return / Close', how: 'header buttons' },
+    { name: 'Discovered / Open Block / Open Model / Save Model / Save & Return / Close', how: 'header buttons' },
   ],
-  problems: ['bad_json', 'bad_input', 'file_unreadable', 'not_in_cad', 'bus_missing'],
+  problems: ['bad_json', 'bad_input', 'file_unreadable', 'not_in_cad', 'bus_missing', 'save_failed'],
 });
 
 const bridge = linkBlock(S, {
@@ -205,6 +208,17 @@ document.addEventListener('DOMContentLoaded', () => {
     status: document.getElementById('discovered-status'),
     tableHost: document.getElementById('discovered-table'),
     tableId: 'drawingsheet-discovered',
+  });
+
+  // Save Model / Open Model: the sheet as IFC4X3 with its .json twin (cad-9, apk-softapp saveModel / openModel)
+  document.getElementById('btn-save-model')?.addEventListener('click', async () => {
+    const r = await S.saveModel(model, { name: model.drawingCode || 'sheet', toIfc: (m) => toIfc(m), toJson: (m) => m.toJSON() });
+    if (!r.ok && !r.cancelled && r.problem) S.showProblem(r.problem);
+  });
+  document.getElementById('btn-open-model')?.addEventListener('click', async () => {
+    const o = await S.openModel({ fromIfc: (t) => fromIfc(t), fromJson: (data) => data });
+    if (o.ok) bridge.openLocal(o.model, { filename: o.name || '' });
+    else if (!o.cancelled && o.problem) S.showProblem(o.problem);
   });
 
   document.getElementById('btn-save-block')?.addEventListener('click', () => {
